@@ -86,11 +86,10 @@ void display() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glLoadIdentity();
 
-    // Transformasi Sudut Pandang Kamera Isometrik 
-    glRotatef(30.0f, 1.0f, 0.0f, 0.0f);  // Tundukkan pandangan 30 derajat
-    glRotatef(-45.0f + rotasiShowroom, 0.0f, 1.0f, 0.0f); // Putar panggung agar 3D terlihat
+    glTranslatef(0.0f, -0.5f, 0.0f);
+    glRotatef(30.0f, 1.0f, 0.0f, 0.0f);
+    glRotatef(-45.0f + rotasiShowroom, 0.0f, 1.0f, 0.0f);
 
-    // Render objek
     gambarBackground();
     gambarMobil3D();
 
