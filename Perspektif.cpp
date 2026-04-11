@@ -1,194 +1,430 @@
 #include <GL/glut.h>
 
+// ==========================================================
+// VARIABEL GLOBAL
+// ==========================================================
+
+// aspekRasio digunakan untuk menyesuaikan proyeksi dengan ukuran window
 float aspekRasio;
+
+// rotasiShowroom dipakai untuk animasi putaran pada mode isometric/orthographic
 float rotasiShowroom = 0.0f;
+
+// sudutRotasiX dan sudutRotasiY dipakai sebagai kontrol arah pandang kamera
+// Nilai ini akan berubah saat user menekan tombol 1, 2, 3, atau 4
 float sudutRotasiX = 0.0f;
 float sudutRotasiY = 0.0f;
+
+// saklarOrtho menentukan jenis proyeksi:
+// true  = orthographic
+// false = perspective
 bool saklarOrtho = false;
 
+
+// ==========================================================
+// INISIALISASI
+// Tahap awal untuk menyiapkan background, depth test, lighting,
+// dan material permukaan objek.
+// ==========================================================
 void inisialisasi() {
-    // 1. BACKGROUND: Warna latar belakang langit (Biru Cerah)
+    // ------------------------------------------------------
+    // BACKGROUND
+    // Mengatur warna latar belakang window menjadi biru cerah
+    // agar menyerupai langit / suasana luar ruangan.
+    // ------------------------------------------------------
     glClearColor(0.5f, 0.7f, 0.9f, 1.0f); 
     
-    // FOKUS REPRESENTASI 3D: Mengaktifkan kedalaman dan pencahayaan
+    // ------------------------------------------------------
+    // ALGORITMA RENDERING: DEPTH TEST
+    // Depth test digunakan agar OpenGL dapat menentukan
+    // objek mana yang berada di depan dan mana yang di belakang.
+    // Tanpa depth test, objek bisa terlihat saling menimpa
+    // secara tidak benar.
+    // ------------------------------------------------------
     glEnable(GL_DEPTH_TEST);
+
+    // ------------------------------------------------------
+    // SHADING & LIGHTING
+    // Mengaktifkan sistem pencahayaan bawaan OpenGL
+    // (fixed-function pipeline).
+    //
+    // GL_LIGHTING : mengaktifkan perhitungan cahaya
+    // GL_LIGHT0   : mengaktifkan satu sumber cahaya
+    // ------------------------------------------------------
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
+
+    // ------------------------------------------------------
+    // KARAKTERISTIK PERMUKAAN
+    // Mengaktifkan color material, sehingga warna yang diberikan
+    // lewat glColor3f() akan ikut dianggap sebagai material objek.
+    // Dengan ini, objek bisa tetap berwarna walaupun lighting aktif.
+    // ------------------------------------------------------
     glEnable(GL_COLOR_MATERIAL);
     
-    // Penempatan cahaya agar warna biru mobil memantul dengan bagus
+    // ------------------------------------------------------
+    // CAHAYA
+    // Menentukan posisi sumber cahaya pada koordinat (5,10,5).
+    // Nilai terakhir = 1.0f berarti cahaya bersifat positional,
+    // bukan directional light.
+    //
+    // Efeknya: bagian mobil yang dekat sumber cahaya akan tampak
+    // lebih terang, sedangkan sisi lain tampak lebih gelap.
+    // ------------------------------------------------------
     GLfloat posisiCahaya[] = { 5.0f, 10.0f, 5.0f, 1.0f };
     glLightfv(GL_LIGHT0, GL_POSITION, posisiCahaya);
 }
 
-// Lingkungan sekitar (Background Bawah)
+
+// ==========================================================
+// GEOMETRI LINGKUNGAN
+// Fungsi ini menggambar lantai/aspek lingkungan sekitar.
+// Di sini background bawah dibuat dari primitive cube.
+// ==========================================================
 void gambarBackground() {
+    // ------------------------------------------------------
+    // OBJEK 1: LANTAI / ASPAL
+    // ------------------------------------------------------
     glPushMatrix();
-    glColor3f(0.3f, 0.3f, 0.3f);      // Warna abu-abu aspal
-    glTranslatef(0.0f, -0.48f, 0.0f); // Posisikan pas di telapak ban
-    glScalef(15.0f, 0.1f, 15.0f);     // Skalakan jadi lantai luas
+
+    // KARAKTERISTIK PERMUKAAN:
+    // Warna abu-abu untuk menyerupai aspal/jalan
+    glColor3f(0.3f, 0.3f, 0.3f);
+
+    // TRANSFORMASI GEOMETRI:
+    // Menggeser objek ke bawah agar sejajar dengan ban mobil
+    glTranslatef(0.0f, -0.48f, 0.0f);
+
+    // Memperbesar cube agar berubah menjadi bidang lantai yang luas
+    glScalef(15.0f, 0.1f, 15.0f);
+
+    // GEOMETRI:
+    // Primitive dasar berupa cube
     glutSolidCube(1.0f);
+
     glPopMatrix();
     
-    // Garis marka / dekorasi panggung putih
+    // ------------------------------------------------------
+    // OBJEK 2: GARIS MARKA / PANGGUNG
+    // ------------------------------------------------------
     glPushMatrix();
+
+    // KARAKTERISTIK PERMUKAAN:
+    // Warna putih untuk dekorasi garis di lantai
     glColor3f(1.0f, 1.0f, 1.0f);
+
+    // TRANSFORMASI:
+    // Sedikit di atas lantai agar terlihat jelas
     glTranslatef(0.0f, -0.42f, 0.0f);
+
+    // Membuat bentuk kotak tipis memanjang
     glScalef(8.0f, 0.02f, 2.0f);
+
+    // GEOMETRI:
     glutSolidCube(1.0f);
+
     glPopMatrix();
 }
 
-// Objek Mobil 3D 
+
+// ==========================================================
+// GEOMETRI MOBIL 3D
+// Fungsi ini membentuk mobil dari gabungan beberapa primitive:
+// cube untuk body dan kabin, torus untuk roda.
+// ==========================================================
 void gambarMobil3D() {
-    // 1. Badan Bawah Mobil (WARNA BARU: Biru Sport)
+
+    // ------------------------------------------------------
+    // BAGIAN 1: BADAN BAWAH MOBIL
+    // ------------------------------------------------------
     glPushMatrix();
-    glColor3f(0.1f, 0.4f, 0.8f); // R, G, B untuk warna Biru
+
+    // KARAKTERISTIK PERMUKAAN:
+    // Warna biru sport untuk body mobil
+    glColor3f(0.1f, 0.4f, 0.8f);
+
+    // TRANSFORMASI:
+    // Cube diperbesar agar membentuk badan mobil
     glScalef(2.0f, 0.5f, 1.0f);
+
+    // GEOMETRI:
     glutSolidCube(1.0f);
+
     glPopMatrix();
 
-    // 2. Kabin/Atap Mobil (Warna kaca cyan/biru muda cerah)
+    // ------------------------------------------------------
+    // BAGIAN 2: KABIN / ATAP MOBIL
+    // ------------------------------------------------------
     glPushMatrix();
+
+    // TRANSFORMASI:
+    // Kabin dipindahkan ke atas body dan sedikit ke kiri
     glTranslatef(-0.2f, 0.5f, 0.0f);
-    glColor3f(0.6f, 0.8f, 0.9f); 
+
+    // KARAKTERISTIK PERMUKAAN:
+    // Warna cyan muda untuk memberi kesan kaca/kabin
+    glColor3f(0.6f, 0.8f, 0.9f);
+
+    // Membentuk ukuran kabin
     glScalef(1.0f, 0.5f, 0.8f);
+
+    // GEOMETRI:
     glutSolidCube(1.0f);
+
     glPopMatrix();
 
-    // 3. Empat Roda 
-    glColor3f(0.15f, 0.15f, 0.15f); // Warna hitam ban pekat
+    // ------------------------------------------------------
+    // BAGIAN 3: EMPAT RODA
+    // Primitive yang digunakan adalah torus
+    // ------------------------------------------------------
+
+    // KARAKTERISTIK PERMUKAAN:
+    // Warna hitam untuk ban
+    glColor3f(0.15f, 0.15f, 0.15f);
     
-    
-    // Ban Depan Kiri
+    // Ban depan kiri
     glPushMatrix(); 
     glTranslatef(0.6f, -0.25f, 0.55f); 
     glutSolidTorus(0.08f, 0.16f, 15, 20); 
     glPopMatrix();
     
-    // Ban Depan Kanan
+    // Ban depan kanan
     glPushMatrix(); 
     glTranslatef(0.6f, -0.25f, -0.55f); 
     glutSolidTorus(0.08f, 0.16f, 15, 20); 
     glPopMatrix();
     
-    // Ban Belakang Kiri
+    // Ban belakang kiri
     glPushMatrix(); 
     glTranslatef(-0.6f, -0.25f, 0.55f); 
     glutSolidTorus(0.08f, 0.16f, 15, 20); 
     glPopMatrix();
     
-    // Ban Belakang Kanan
+    // Ban belakang kanan
     glPushMatrix(); 
     glTranslatef(-0.6f, -0.25f, -0.55f); 
     glutSolidTorus(0.08f, 0.16f, 15, 20); 
     glPopMatrix();
 }
 
+
+// ==========================================================
+// DISPLAY
+// Fungsi utama render frame.
+// Di sinilah tahapan viewing, transformasi kamera,
+// dan output akhir ke layar terjadi.
+// ==========================================================
 void display() {
+    // ------------------------------------------------------
+    // ALGORITMA RENDERING
+    // Membersihkan color buffer dan depth buffer setiap frame
+    // agar frame lama tidak menumpuk dengan frame baru.
+    // ------------------------------------------------------
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Reset matrix modelview ke identitas
     glLoadIdentity();
 
+    // ------------------------------------------------------
+    // KAMERA / VIEWING
+    // Menggeser scene agar objek berada dalam jangkauan kamera.
+    // Z = -12 artinya scene dijauhkan dari kamera.
+    // Y = -1 membuat mobil sedikit turun agar komposisinya pas.
+    // ------------------------------------------------------
     glTranslatef(0.0f, -1.0f, -12.0f);
 
-    // Transformasi Sudut Pandang Kamera Isometrik, bagian yang diubah untuk menciptakan pandangan perspektif 
-    glRotatef(sudutRotasiX, 1.0f, 0.0f, 0.0f);  // Tundukkan pandangan 30 derajat
-    glRotatef(sudutRotasiY, 0.0f, 1.0f, 0.0f);  // Putar panggung agar 3D terlihat
+    // ------------------------------------------------------
+    // KAMERA / ORIENTASI PANDANG
+    // Sudut rotasi diatur dari input keyboard:
+    // - tombol 1 : 1 point perspective
+    // - tombol 2 : 2 point perspective
+    // - tombol 3 : 3 point perspective
+    // - tombol 4 : isometric / orthographic
+    // ------------------------------------------------------
+    glRotatef(sudutRotasiX, 1.0f, 0.0f, 0.0f);
+    glRotatef(sudutRotasiY, 0.0f, 1.0f, 0.0f);
 
-    // Render objek
+    // ------------------------------------------------------
+    // TAHAP RENDER OBJEK
+    // Setelah kamera dan transformasi siap,
+    // objek lingkungan dan mobil digambar.
+    // ------------------------------------------------------
     gambarBackground();
     gambarMobil3D();
 
+    // ------------------------------------------------------
+    // OUTPUT RENDERING
+    // Menggunakan double buffering agar animasi lebih halus
+    // dan tidak terjadi flicker.
+    // ------------------------------------------------------
     glutSwapBuffers();
 }
 
-// Proyeksi Orthographic 
+
+// ==========================================================
+// RESHAPE
+// Fungsi ini dipanggil saat ukuran window berubah.
+// Di sini ditentukan jenis proyeksi:
+// - Orthographic jika saklarOrtho = true
+// - Perspective jika saklarOrtho = false
+// ==========================================================
 void reshape(int w, int h) {
     if (h == 0) h = 1;
+
+    // Menghitung aspek rasio window
     aspekRasio = (float)w / (float)h;
 
+    // Menentukan area viewport
     glViewport(0, 0, w, h);
+
+    // Pindah ke matrix projection
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
-    
     if(saklarOrtho == true){
-        // Orthographic Viewing Volume
-        float ukuranLayar = 4.0f; // Area zoom pandangan
+        // --------------------------------------------------
+        // PROYEKSI ORTHOGRAPHIC
+        // Pada proyeksi orthographic, objek yang jauh
+        // tidak terlihat mengecil.
+        //
+        // Cocok untuk tampilan teknik / isometrik.
+        // --------------------------------------------------
+        float ukuranLayar = 4.0f;
+
         if (w >= h) {
-            glOrtho(-ukuranLayar * aspekRasio, ukuranLayar * aspekRasio, -ukuranLayar, ukuranLayar, -20.0f, 20.0f);
+            glOrtho(-ukuranLayar * aspekRasio, ukuranLayar * aspekRasio,
+                    -ukuranLayar, ukuranLayar,
+                    -20.0f, 20.0f);
         } else {
-            glOrtho(-ukuranLayar, ukuranLayar, -ukuranLayar / aspekRasio, ukuranLayar / aspekRasio, -20.0f, 20.0f);
+            glOrtho(-ukuranLayar, ukuranLayar,
+                    -ukuranLayar / aspekRasio, ukuranLayar / aspekRasio,
+                    -20.0f, 20.0f);
         }
-    }else{
+    } else {
+        // --------------------------------------------------
+        // PROYEKSI PERSPECTIVE
+        // Pada perspective, objek yang jauh terlihat lebih kecil.
+        // Ini menimbulkan kesan realistis seperti penglihatan manusia.
+        //
+        // 45.0f  = field of view
+        // 0.1f   = near clipping plane
+        // 100.0f = far clipping plane
+        // --------------------------------------------------
         gluPerspective(45.0f, aspekRasio, 0.1f, 100.0f);
     }
-    
 
+    // Kembali ke matrix modelview
     glMatrixMode(GL_MODELVIEW);
 }
 
-// Animasi pasif untuk memutar panggung
+
+// ==========================================================
+// TIMER / ANIMASI
+// Fungsi ini dipakai untuk menggerakkan rotasi showroom.
+// Animasi hanya aktif saat mode orthographic/isometric.
+// ==========================================================
 void pewaktu(int value) {
     if(saklarOrtho == true){
-        rotasiShowroom += 0.5f; // Kecepatan putaran 
+        // Menambah sudut rotasi sedikit demi sedikit
+        rotasiShowroom += 0.5f;
+
+        // Jika lebih dari 360 derajat, kembali dari awal
         if(rotasiShowroom > 360.0f){
             rotasiShowroom -= 360.0f;
         } 
     }
    
-    
+    // Meminta OpenGL merender ulang frame berikutnya
     glutPostRedisplay();
+
+    // Mengatur timer agar dipanggil lagi tiap 16 ms
+    // (~60 FPS)
     glutTimerFunc(16, pewaktu, 0); 
 }
 
-// Kontrol input keyboard untuk mengganti sudut pandang dan mode proyeksi
+
+// ==========================================================
+// INPUT KEYBOARD
+// Fungsi ini mengatur mode pandang berdasarkan tombol.
+// ==========================================================
 void ControlInput(unsigned char key, int x, int y){
     switch (key){
         case '1':
-        // 1 point perspective
+            // ----------------------------------------------
+            // 1 POINT PERSPECTIVE
+            // Pandangan lurus ke depan
+            // Satu titik hilang
+            // ----------------------------------------------
             sudutRotasiX = 0.0f;
             sudutRotasiY = 0.0f;
-            //reshape(w, h);
             saklarOrtho = false;
             break;
+
         case '2':
-        // 2 point perspective
+            // ----------------------------------------------
+            // 2 POINT PERSPECTIVE
+            // Objek diputar pada sumbu Y
+            // Dua sisi objek terlihat
+            // ----------------------------------------------
             sudutRotasiX = 0.0f;
             sudutRotasiY = 45.0f;
-            reshape(w, h);
             saklarOrtho = false;
             break;
+
         case '3':
-        // 3 point perspective
+            // ----------------------------------------------
+            // 3 POINT PERSPECTIVE
+            // Objek diputar pada sumbu X dan Y
+            // Memberi kesan lebih dramatis / dinamis
+            // ----------------------------------------------
             sudutRotasiX = 45.0f;
             sudutRotasiY = 45.0f;
-            //reshape(w, h);
             saklarOrtho = false;
             break;
+
         case '4':
-        // Isometric
+            // ----------------------------------------------
+            // ISOMETRIC / ORTHOGRAPHIC
+            // Menggunakan sudut khas isometrik:
+            // X = 30 derajat, Y = -45 derajat
+            // Serta animasi rotasi showroom
+            // ----------------------------------------------
             sudutRotasiX = 30.0f;
             sudutRotasiY = -45.0f + rotasiShowroom;
-            //reshape(w, h); 
             saklarOrtho = true;
             break;
     }
+
+    // Meminta render ulang setelah input
     glutPostRedisplay();
 }
 
 
+// ==========================================================
+// MAIN
+// Titik awal program
+// ==========================================================
 int main(int argc, char** argv) {
     glutInit(&argc, argv);
+
+    // GLUT_DOUBLE : double buffering
+    // GLUT_RGB    : mode warna RGB
+    // GLUT_DEPTH  : depth buffer aktif
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+
     glutInitWindowSize(800, 600);
     glutCreateWindow("Fokus: Representasi 3D Mobil & Orthographic serta Perspektif");
 
+    // Inisialisasi sistem rendering
     inisialisasi();
+
+    // Registrasi callback
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
     glutTimerFunc(0, pewaktu, 0);
     glutKeyboardFunc(ControlInput);
+
+    // Menjalankan loop utama
     glutMainLoop();
 
     return 0;
